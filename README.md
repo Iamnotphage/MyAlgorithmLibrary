@@ -1,6 +1,6 @@
 # My-Algorithm-Library
 
-    Collect the DS &amp; Algorithms I have learned.
+    Collect the DS & Algorithms I have learned.
 
 - [My-Algorithm-Library](#my-algorithm-library)
 - [前言](#前言)
