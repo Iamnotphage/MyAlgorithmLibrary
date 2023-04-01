@@ -26,6 +26,12 @@
   - [基数排序](#基数排序)
 - [不相交集ADT](#不相交集adt)
 - [图论算法](#图论算法)
+  - [DFS和BFS](#dfs和bfs)
+  - [Prim](#prim)
+  - [Kruskal](#kruskal)
+  - [TopologicalSort](#topologicalsort)
+  - [Dijkstra](#dijkstra)
+  - [Floyd](#floyd)
 
 
 # 前言
@@ -656,5 +662,213 @@ void QuickSort(int* a,int start,int end){
 
 # 图论算法
 
+主要用邻接矩阵存储。算法除了DFS和BFS都挺复杂的，让我手搓我也不会。
 
+先来数据结构:
+
+```CPP
+//邻接矩阵
+#define INFINITY INT_MAX//设INT_MAX是无穷大 表示俩者不邻接(俩点可达存边权，不可达存infinity) 有时候0表示不邻接，这个一般是可达矩阵(要么存0要么存1)
+#define MAX_VERTEX_NUM 20//最大顶点个数
+
+typedef struct MatrixGraph{
+    char vexs[MAX_VERTEX_NUM];//顶点向量，如果顶点名字是字符就改成char,这只做参考
+    int AdjMatrix[MAX_VERTEX_NUM][MAX_VERTEX_NUM];//核心，邻接矩阵
+    int vexnum,arcnum;//顶点数和边数，并非必要的
+}MGraph;
+```
+
+## DFS和BFS
+
+```CPP
+//DepthFirstSearch 图的深度优先搜索DFS
+//类似树的DLR先序遍历
+//全局变量visited
+
+//注意：下面DFS是以MatrixGraph的存储方式进行的 (0，1表示不可达，可达)
+
+bool visited[MAX_VERTEX_NUM];//true表示访问过，false表示未访问
+//在利用dfs判断有向图是否有环时，可以利用三种状态-1 0 1分别表示 正在访问，未访问，已经访问；
+//正在访问也就是正在程序栈中 即在dfs递归的过程中重新遇到正在访问的结点说明有环。
+
+//DFS递归版本 以邻接矩阵为例 顺便求一下连通分量omega
+void DFS(MGraph G, int v){
+    //从第v个结点出发DFS遍历图G
+    visited[v]=true;
+    printf("%c ",G.AdjMatrix[v]);//这里的访问就用输出替代
+
+    for(int w=0;w<G.vexnum;++w){
+        if(!visited[w] && G.AdjMatrix[v][w]==1){
+            DFS(G,w);
+        }
+    }
+}
+void DFSTraverse(MGraph G,int & omega){//omega为连通分量(并非一定要求)
+    omega=0;
+    for(int i=0;i<G.vexnum;++i){
+        visited[i]=false;//初始化为false
+    }
+    for(int i=0;i<G.vexnum;++i){
+        if(!visited[i]){
+            DFS(G,i);
+            omega++;//在这里计算omega
+        }
+    }
+}
+
+//DFS非递归版本 以邻接矩阵为例
+void DepthFirstSearch(MGraph G){
+    stack<int> S;//visit stack 存储访问过的结点
+    S.push(0);
+    visited[0]=1;
+    int lineNo=S.top();
+    cout<<"visit: "<<lineNo;
+    while(!S.empty()){
+        lineNo=S.top();
+        int colNo=0;
+        for(colNo=0;colNo<G.vexnum;++colNo){
+            if(G.AdjMatrix[lineNo][colNo] && !visited[colNo]){
+                S.push(colNo);
+                visited[colNo]=true;
+                cout<<"visit: "<<colNo;
+                break;
+            }
+        }
+        if(colNo==G.vexnum){
+            S.pop();
+        }
+    }
+}
+
+//BFS 图的广度优先搜索 以邻接矩阵为例子 类似树的层次遍历
+void BFSTraverse(MGraph G){
+    for(int i=0;i<G.vexnum;++i){
+        visited[i]=false;//初始化visited数组
+    }
+    queue<int> Q;//辅助队列Q
+    for(int v=0;v<G.vexnum;++v){
+        if(!visited[v]){
+            visited[v]=true;
+            cout<<v+1<<" ";// Visite()的一种示例
+            Q.push(v);//i入队列
+            while(!Q.empty()){
+                int u=Q.front();
+                Q.pop();//u赋值为队列的头然后出队
+                for(int w=0;w<G.vexnum;++w){//从小到大找与u邻接的结点w
+                    if(!visited[w] && G.AdjMatrix[u][w]){
+                        visited[w]=true;
+                        cout<<w+1<<" ";// Visite()的一种示例
+                        Q.push(w);
+                    }//if
+                }//for
+            }//while
+        }//if
+    }//for
+}//BFS
+```
+
+## Prim
+
+```CPP
+//最小生成树/Minimum Cost Spanning Tree
+
+//Prim算法 MGraph图的邻接矩阵存储的是边和边的权重
+//权重(一般为正) 下面的例子中 G.adj[i][j]权重INT_MAX表示infinity 其余是边权值
+//无向图G没有自回路 所以一般i=j的边直接赋值0
+//Prim算法对于稠密图的情况会好用一点/ 边数多 O(n^2)
+void Prim(MGraph G){
+    //用Prim算法从第u个结点出发构造G的最小生成树T，输出T的各条边
+    int min,i,j,k;
+    //min表示当前结点最小的边权 ij做临时变量 k是最小边权的另外一个结点
+
+    int adjvex[MAX_VERTEX_NUM];//存储相关顶点的下标(也就是索引)
+    int lowcost[MAX_VERTEX_NUM];//存储最小代价/权值 0表示已经访问过
+
+    //Part1 初始化lowcost数组和adjvex数组
+    lowcost[0]=0;//初始化第一个权值为0 表示第一个结点已经访问
+    adjvex[0]=0;//下标为0
+    for(i=1;i<G.vexnum;++i){
+        lowcost[i]=G.AdjMatrix[0][i];//lowcost存储 与v0结点相关的所有权值
+        adjvex[i]=0;//初始化都为v0的下标
+    }
+
+    //Part2 
+    for(i=1;i<G.vexnum;++i){
+        min=INT_MAX;//INT_MAX在<climits>或<limits.h>中有定义
+        j=1;
+        k=0;
+        //Part2 找当前结点 边的最小值 从lowcost中找最小值(不为0)
+        while(j<G.vexnum){
+            if(lowcost[j]!=0 && lowcost[j]<min){//到j结点可达 且 最小值需要刷新
+                min=lowcost[j];//刷新最小值
+                k=j;//下标赋值给k
+            }
+            ++j;
+        }
+        printf("(%d,%d)\n",adjvex[k],k);//输出当前顶点中权值最小的边 (v1,v2)俩节点表示边
+        //Part3 以k为"当前结点” 重新刷新lowcost和adjvex
+        lowcost[k]=0;//置零表示该顶点已经完成查找最小边
+        for(j=1;j<G.vexnum;++j){
+            if(lowcost[j]!=0 && G.AdjMatrix[k][j]<lowcost[j]){//j结点没访问过
+                lowcost[j]=G.AdjMatrix[k][j];
+                adjvex[j]=k;
+            }
+        }
+    }
+}
+```
+
+## Kruskal
+
+## TopologicalSort
+
+```CPP
+//TopologicalSort/有向图的拓扑排序/邻接矩阵存储为例
+
+int indegree[MAX_VERTEX_NUM];//各个结点的入度值
+
+//先对各顶点求入度
+void FindInDegree(MGraph G,int indegree[]){
+    for(int i=0;i<G.vexnum;++i){
+        for(int j=0;j<G.vexnum;++j){
+            if(G.AdjMatrix[i][j]!=0){
+                indegree[j]++;
+            }
+        }
+    }
+}
+
+bool TopologicalSort(MGraph G,int indegree[]){
+    FindInDegree(G,indegree);//对各顶点求入度
+    stack<int> S;//这里的容器改成queue也可以实现TopoSort
+    for(int i=0;i<G.vexnum;++i){
+        if(indegree[i]==0){
+            S.push(i);//入度为0，进入S
+        }
+    }
+    int count=0;//对输出顶点计数
+    while(!S.empty()){
+        int u=S.top();
+        S.pop();
+        for(int w=0;w<G.vexnum;++w){
+            if(G.AdjMatrix[u][w]!=0){
+                indegree[w]--;
+                if(indegree[w]==0){
+                    S.push(w);
+                }
+            }
+        }
+        count++;
+    }
+    if(count<G.vexnum){
+        return false;//TopoSort失败 有环
+    }else{
+        return true;//TopoSort成功
+    }
+}
+```
+
+## Dijkstra
+
+## Floyd
 
