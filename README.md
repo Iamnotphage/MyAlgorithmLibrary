@@ -9,6 +9,8 @@
   - [BruteForce算法（暴力匹配）](#bruteforce算法暴力匹配)
   - [KMP算法](#kmp算法)
 - [树](#树)
+  - [二叉树](#二叉树)
+  - [二叉排序树](#二叉排序树)
 - [散列](#散列)
 - [优先队列（堆）](#优先队列堆)
 - [排序](#排序)
@@ -115,7 +117,297 @@ int KMP(char* S,char* T,int pos,int* next){
 
 # 树
 
+主要是二叉树，二叉排序树(二叉查找树)。
 
+首先是二叉树链表形式的数据结构：
+
+```C
+#define TElemType int
+typedef struct BiTNode{
+    TElemType data;
+    struct BiTNode* lchild,*rchild;
+}BiTNode,*BiTree;
+```
+## 二叉树
+
+```C
+//递归版本前序遍历,自己写的,比较垃圾,LDR,LRD同理
+void PreOrder(BiTree T){
+    if(T==nullptr){
+        return;
+    }else{
+        cout<<T->data;//Visit();
+        PreOrder(T->lchild);
+        PreOrder(T->rchild);
+    }
+}
+
+//递归版本中序遍历，自己写的
+void InOrder(BiTree T){
+    if(T==nullptr){
+        return;
+    }else{
+        InOrder(T->lchild);
+        cout<<T->data;//Visit();
+        InOrder(T->rchild);
+    }
+}
+
+//递归版本后序遍历，自己写的
+void PostOrder(BiTree T){
+    if(T==nullptr){
+        return;
+    }else{
+        PostOrder(T->lchild);
+        PostOrder(T->rchild);
+        cout<<T->data;
+    }
+}
+
+//非递归版本的二叉树遍历(利用栈),以及一个层次遍历(利用队列)//
+/*
+    非递归版本的二叉树遍历
+前序遍历(DLR)：循环中，刷新p，入栈右子树，入栈左子树
+*/
+//非递归版本前序遍历
+int PreOrderTraverseNonR(BiTree T,int(*Visit)(TElemType e)){
+    //DLR
+    stack<BiTree>S;
+    auto p=T;
+    while(p || !S.empty()){
+        if(p){
+            if(!Visit(p->data)){
+                return 0;
+            }//一整坨 Visit()
+            S.push(p);
+            p=p->lchild;
+        }else{
+            p=S.top();
+            S.pop();
+            p=p->rchild;
+        }
+    }
+    return 1;//OK
+}
+
+//非递归版本中序遍历
+int InOrderTraverseNonR(BiTree T,int(*Visit)(TElemType e)){
+    //LDR,先入左子树，再右子树
+    stack<BiTree>S;
+    auto p=T;
+    while(p || !S.empty()){
+        if(p){//根指针进栈，遍历左子树
+            S.push(p);
+            p=p->lchild;
+        }else{
+            //根指针退栈，访问根节点，遍历右子树
+            p=S.top();
+            S.pop();
+            if(!Visit(p->data)){
+                return 0;//ERROR
+            }
+            p=p->rchild;
+        }
+    }
+    return 1;//OK
+}
+
+//非递归版本后序遍历
+int PostOrderTraverseNonR(BiTree T,int(*Visit)(TElemType e)){
+    //LRD
+    BiTree p;
+    stack<BiTree>S;
+    S.push(T);//根结点先入栈
+    BiTree pre=nullptr;
+    while(!S.empty()){//栈不空
+        p=S.top();
+        if((p->lchild==nullptr && p->rchild==nullptr) || (pre!=nullptr && (pre==p->lchild || pre==p->rchild)) ){
+            //子树空或者子树都以及被访问过
+            if(!Visit(p->data)){
+                return 0;
+            }
+            S.pop();
+            pre=p;
+        }else{
+            if(p->rchild!=nullptr){
+                S.push(p->rchild);//先右子树入栈
+            }
+            if(p->lchild!=nullptr){
+                S.push(p->lchild);//后左子树入栈
+            }
+        }
+    }
+    return 1;
+}
+
+//非递归层次遍历
+int LevelTraverseNonR(BiTree T,int(*Visit)(TElemType e)){
+    //队列实现 queue 总体是先入队，p=Q的头并访问，p左子树入队，p右子树入队，再循环
+    BiTree p;
+    queue<BiTree>Q;
+    Q.push(T);
+    while(!Q.empty()){
+        p=Q.front();
+        if(!Visit(p->data)){
+            return 0;//ERROR
+        }
+        Q.pop();
+        if(p->lchild!=nullptr){
+            Q.push(p->lchild);
+        }
+        if(p->rchild!=nullptr){
+            Q.push(p->rchild);
+        }
+    }
+    return 1;//OK
+}
+
+//先序次序创建二叉树
+BiTree CreateBiTree(){
+    char ch;
+    BiTree T;
+    scanf("%c",&ch);
+    if(ch==' '){//用空格表示空树
+        T=NULL;
+    }else{
+        if(!(T=(BiTree)malloc(sizeof(BiTNode)))){
+            exit(0);
+        }
+        T->data=ch;//生成根结点
+        T->lchild=CreateBiTree();
+        T->rchild=CreateBiTree();
+    }
+    return T;
+}
+
+//求二叉树的深度
+int BiTreeDepth(BiTree T){
+    int lchilddep=0,rchilddep=0;
+    if(T==nullptr){
+        return 0;
+    }else{
+        lchilddep=BiTreeDepth(T->lchild);
+        rchilddep=BiTreeDepth(T->rchild);
+        return (lchilddep>rchilddep)?(lchilddep+1):(rchilddep+1);
+    }
+}
+
+//判定俩二叉树是否相似
+int Like(BiTree T1,BiTree T2){
+    //T1和T2俩颗二叉树是否相似，是1，否0
+    int like1,like2;
+    if(T1==nullptr && T2==nullptr){
+        return 1;
+    }else if(T1==nullptr || T2==nullptr){
+        return 0;
+    }else{
+        like1 = Like(T1->lchild,T2->lchild);
+        like2 = Like(T1->rchild,T2->rchild);
+        return(like1 && like2);
+    }
+}
+```
+
+## 二叉排序树
+
+```C
+//BinarySearchTree,结点结构体定义与二叉树相同
+//定义：左子树所有结点小于根，右子树所有结点大于根，子树仍符合上述定义(递归)
+
+//MakeEmpty,初始化
+BiTree MakeEmpty(BiTree T){
+    if(T!=nullptr){
+        MakeEmpty(T->lchild);
+        MakeEmpty(T->rchild);
+        free(T);
+    }
+    return nullptr;
+}
+
+//Find查找 递归的方法
+BiTree Find(TElemType x,BiTree T){
+    if(T==nullptr){
+        return nullptr;
+    }
+    if(x < T->data){
+        return Find(x,T->lchild);
+    }else if(x > T->data){
+        return Find(x,T->rchild);
+    }else{
+        return T;
+    }
+}
+
+//FindMin查找最小值 递归版本
+BiTree FindMin(BiTree T){
+    if(T==nullptr){//先写终止条件
+        return nullptr;
+    }else if(T->lchild==nullptr){
+        return T;
+    }else{
+        return FindMin(T->lchild);
+    }
+}
+
+//FindMax查找最大值 非递归版本
+BiTree FindMax(BiTree T){
+    if(T!=nullptr){
+        while(T->rchild!=nullptr){
+            T=T->rchild;
+        }
+    }
+    return T;
+}
+
+//在二叉查找树中插入x结点
+BiTree Insert(TElemType x,BiTree T){
+    if(T=nullptr){
+        //创建一个树
+        T=(BiTree)malloc(sizeof(BiTNode));
+        if(T==nullptr){
+            printf("Out of Space");//溢出
+        }else{
+            T->data=x;
+            T->lchild=nullptr;
+            T->rchild=nullptr;
+        }
+    }else{
+        if(x < T->data){
+            T->lchild=Insert(x,T->lchild);//这里已经实现插入了
+        }else if(x > T->data){
+            T->rchild=Insert(x,T->rchild);//这里已经实现插入了
+        }
+    }
+    return T;//这一行非常重要
+}
+
+//Delete删除操作 递归 lazy deletion
+BiTree Delete(TElemType x,BiTree T){
+    BiTree TmpCell;
+    if(T==nullptr){
+        printf("ERROR: Element not found");
+    }else if(x < T->data){
+        T->lchild=Delete(x, T->lchild);
+    }else if(x > T->data){
+        T->rchild=Delete(x, T->rchild);
+    }else if(T->lchild && T->rchild){//找到要删除的元素了,不过是有俩个子树的情况
+        //找右子树中的最小值   或者左子树的最大值也行
+        TmpCell=FindMin(T->rchild);
+        T->data=TmpCell->data;
+        T->rchild=Delete(T->data,T->rchild);//此时T->data已经赋值成右子树的最小值了，接下来需要在右子树删除这个结点(因为多余了)
+    }else{
+        //0个子树，或者1个子树
+        TmpCell = T;
+        if(T->lchild==nullptr){//这里同时也处理了0个子树的情况
+            T=T->rchild;
+        }else if(T->rchild==nullptr){
+            T=T->lchild;
+        }
+        free(TmpCell);
+    }
+    return T;
+}
+```
 
 # 散列
 
