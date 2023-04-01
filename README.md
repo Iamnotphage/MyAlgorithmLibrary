@@ -39,9 +39,53 @@
 
 # 树
 
+
+
 # 散列
 
 # 优先队列（堆）
+堆的定义不用多说，递归定义，大顶堆父结点最大，小顶堆父结点最小，完全二叉树。
+
+主要是数据结构吗，因为是完全二叉树，所以常用数组。
+
+BinHeap.h文件内容如下:
+
+定义数据结构，操作主要有判断是否为空、是否满、初始化堆、删除、插入、查找最小元素。
+
+```C
+//BinHeap.h
+#ifndef _BinHeap_H
+
+#define ElementType int
+
+struct HeapSturct;
+typedef struct HeapStruct *PriorityQueue;
+
+PriorityQueue Initialize(int MaxElements);
+void Destroy(PriorityQueue H);
+void MakeEmpty(PriorityQueue H);
+void Insert(ElementType X,PriorityQueue H);
+ElementType DeleteMin(PriorityQueue H);
+ElementType FindMin(PriorityQueue H);
+int IsEmpty(PriorityQueue H);
+int IsFull(PriorityQueue H);
+
+#endif
+```
+
+具体实现的code clip：
+```C
+#define MinPQSize 1  //最小堆的大小
+#define MinData 0 //必须小于堆中的任何值
+
+struct HeapStruct{
+    int Capacity;
+    int Size;
+    ElementType *Elements;//数组实现
+};
+
+```
+
 
 # 排序
 
