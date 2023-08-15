@@ -4,6 +4,7 @@
 
 - [My-Algorithm-Library](#my-algorithm-library)
 - [前言](#前言)
+- [数学](#数学)
 - [表、栈和队列](#表栈和队列)
 - [串](#串)
   - [BruteForce算法（暴力匹配）](#bruteforce算法暴力匹配)
@@ -45,6 +46,78 @@
     谨以此库当作我人脑的外存。
 
 23年3月补档，数据结构期末总评100（当然考核肯定水一些，只能说出的题刚好都会）
+
+# 数学
+
+MIT6.828里面学到一个多线程素数筛:
+
+```CPP
+//primes.c
+#include "kernel/types.h"
+#include "user/user.h"
+
+void prime_sieve(int* fd){
+    int buf[1];
+    close(fd[1]);
+    if(read(fd[0],buf,4)!=0){
+        //0 stands for nothing to read.
+        int p=buf[0];
+        fprintf(2,"prime %d\n",p);
+
+        int fd2[2];//to the right neighbor
+        pipe(fd2);
+        int pid2=fork();//the new process shared that pipe
+
+        if(pid2==0){
+            prime_sieve(fd2);
+        }else{
+            //current(parent) process write to RIGHT
+            int n=p;
+            while(read(fd[0],buf,4)!=0){
+                //n = get a number from left neighbor
+                n=buf[0];
+
+                if(n%p!=0){
+                    close(fd2[0]);
+                    write(fd2[1],buf,4);//send n to right neighbor
+                }
+            }
+            close(fd2[1]);
+            wait(0);
+        }
+    }
+    exit(0);
+}
+
+int main(){
+    int fd[2];
+    int p,n;
+    int buf[1];
+    pipe(fd);
+    int pid=fork();
+    if(pid==0){
+        //in child process
+        //read frome left, write into right
+        prime_sieve(fd);
+    }else{
+        //in parent process
+        p=2;
+        fprintf(2,"prime %d\n",p);
+        n=p;
+        while(n<35){
+            buf[0]=++n;
+            if(buf[0]%p!=0){
+                close(fd[0]);
+                write(fd[1],buf,4);//int has 4B
+            }
+        }
+        close(fd[1]);
+        wait(0);//wait for child process
+    }
+    exit(0);
+}
+```
+
 
 # 表、栈和队列
 
